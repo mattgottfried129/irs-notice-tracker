@@ -4,3 +4,6 @@
 ## v1.0.1 - 2025-09-23
 - Deployed IRS Notice Tracker to GitHub Pages
 
+## v1.0.2 - 2025-09-23
+- Deployed IRS Notice Tracker to GitHub Pages
+
