@@ -1,0 +1,55 @@
+{
+  "flutter": {
+    "platforms": {
+      "android": {
+        "default": {
+          "projectId": "irs-notice-tracker",
+          "appId": "1:753188109781:android:e778070b35da936e88915c",
+          "fileOutput": "android/app/google-services.json"
+        }
+      },
+      "dart": {
+        "lib/firebase_options.dart": {
+          "projectId": "irs-notice-tracker",
+          "configurations": {
+            "android": "1:753188109781:android:e778070b35da936e88915c",
+            "ios": "1:753188109781:ios:50116d5773a63e4888915c",
+            "macos": "1:753188109781:ios:50116d5773a63e4888915c",
+            "web": "1:753188109781:web:14275df1d88b534288915c",
+            "windows": "1:753188109781:web:c11d9cb63dec4b9688915c"
+          }
+        }
+      }
+    }
+  },
+  "functions": [
+    {
+      "source": "functions",
+      "codebase": "default",
+      "ignore": [
+        "node_modules",
+        ".git",
+        "firebase-debug.log",
+        "firebase-debug.*.log",
+        "*.local"
+      ]//,
+     // "predeploy": [
+        //"npm --prefix \"$RESOURCE_DIR\" run lint"
+      //]
+    }
+  ],
+  "hosting": {
+    "public": "build/web",
+    "ignore": [
+      "firebase.json",
+      "**/.*",
+      "**/node_modules/**"
+    ],
+    "rewrites": [
+      {
+        "source": "**",
+        "destination": "/index.html"
+      }
+    ]
+  }
+}

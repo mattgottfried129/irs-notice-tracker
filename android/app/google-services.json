@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "753188109781",
+    "project_id": "irs-notice-tracker",
+    "storage_bucket": "irs-notice-tracker.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:753188109781:android:e778070b35da936e88915c",
+        "android_client_info": {
+          "package_name": "com.example.irs_notice_tracker"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyA0RPmX6BfnHk8Z3StN23kEn8_SZU0noLA"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
