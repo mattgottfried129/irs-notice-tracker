@@ -17,25 +17,34 @@ class ClientAdapter extends TypeAdapter<Client> {
       for (int i = 0; i < numOfFields; i++) reader.readByte(): reader.read(),
     };
     return Client(
-      id: fields[0] as String,
-      name: fields[1] as String,
-      contact: fields[2] as String,
-      email: fields[3] as String,
+      id: fields[0] as String?,
+      taxpayerName: fields[1] as String,
+      spouseName: fields[5] as String?,
+      email: fields[2] as String?,
+      phone: fields[3] as String?,
+      address: fields[4] as String?,
+      isMarriedFiling: fields[6] as bool,
     );
   }
 
   @override
   void write(BinaryWriter writer, Client obj) {
     writer
-      ..writeByte(4)
+      ..writeByte(7)
       ..writeByte(0)
       ..write(obj.id)
       ..writeByte(1)
-      ..write(obj.name)
+      ..write(obj.taxpayerName)
       ..writeByte(2)
-      ..write(obj.contact)
+      ..write(obj.email)
       ..writeByte(3)
-      ..write(obj.email);
+      ..write(obj.phone)
+      ..writeByte(4)
+      ..write(obj.address)
+      ..writeByte(5)
+      ..write(obj.spouseName)
+      ..writeByte(6)
+      ..write(obj.isMarriedFiling);
   }
 
   @override
