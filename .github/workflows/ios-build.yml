@@ -1,4 +1,4 @@
-name: Build and Sign Flutter iOS App
+name: Build Unsigned iOS App for AltStore
 
 on:
   push:
@@ -29,28 +29,18 @@ jobs:
           pod install
           cd ..
 
-      - name: Import Code-Signing Certificates
+      - name: Build the unsigned application (.app)
+        run: flutter build ios --release --no-codesign
+
+      - name: Package the application into an .ipa file
         run: |
-          # Create a temporary keychain
-          security create-keychain -p "${{ secrets.KEYCHAIN_PASSWORD }}" build.keychain
-          security default-keychain -s build.keychain
-          security unlock-keychain -p "${{ secrets.KEYCHAIN_PASSWORD }}" build.keychain
-          
-          # Decode and import the certificate (.p12)
-          echo "${{ secrets.BUILD_CERTIFICATE_BASE64 }}" | base64 --decode > certificate.p12
-          security import certificate.p12 -k build.keychain -P "${{ secrets.P12_PASSWORD }}" -A
-          security set-key-partition-list -S apple-tool:,apple: -s -k "${{ secrets.KEYCHAIN_PASSWORD }}" build.keychain
+          cd build/ios/iphoneos
+          mkdir Payload
+          cp -r Runner.app Payload/
+          zip -r -y irs-notice-tracker.ipa Payload/
 
-      - name: Install provisioning profile
-        run: |
-          mkdir -p ~/Library/MobileDevice/Provisioning\ Profiles
-          echo "${{ secrets.BUILD_PROVISION_PROFILE_BASE64 }}" | base64 --decode > ~/Library/MobileDevice/Provisioning\ Profiles/build_pp.mobileprovision
-
-      - name: Build and sign iOS app
-        run: flutter build ipa --release
-
-      - name: Upload artifact
+      - name: Upload the unsigned .ipa
         uses: actions/upload-artifact@v4
         with:
-          name: ios-release
-          path: build/ios/ipa/*.ipa
+          name: ios-release-unsigned
+          path: build/ios/iphoneos/irs-notice-tracker.ipa
