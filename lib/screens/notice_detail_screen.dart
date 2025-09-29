@@ -55,115 +55,89 @@ class NoticeDetailScreen extends StatelessWidget {
         snapshot.docs.map((doc) => Call.fromMap(doc.data() as Map<String, dynamic>, doc.id)).toList());
   }
 
-  // Helper method to get priority color
-  Color _getPriorityColor(String? priority) {
-    switch (priority?.toLowerCase()) {
-      case 'high':
-        return Colors.red;
-      case 'final/levy/lien':
-        return Colors.deepOrange;
-      case 'medium':
-        return Colors.orange;
-      case 'low':
-        return Colors.green;
-      default:
-        return Colors.grey;
-    }
-  }
+  Future<void> _showStatusChangeDialog(BuildContext context, Notice notice) async {
+    final statuses = [
+      "Open",
+      "In Progress",
+      "Waiting on Client",
+      "Awaiting IRS Response",
+      "Escalated",
+      "Closed",
+    ];
 
-  // Helper method to get priority icon
-  IconData _getPriorityIcon(String? priority) {
-    switch (priority?.toLowerCase()) {
-      case 'final/levy/lien':
-        return Icons.warning;
-      case 'high':
-        return Icons.priority_high;
-      case 'medium':
-        return Icons.flag;
-      case 'low':
-        return Icons.flag_outlined;
-      default:
-        return Icons.help_outline;
-    }
-  }
-
-  Widget _buildDetailRow(String label, String value) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 8.0),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          SizedBox(
-            width: 120,
-            child: Text(
-              "$label:",
-              style: const TextStyle(fontWeight: FontWeight.w500),
-            ),
-          ),
-          Expanded(child: Text(value)),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildDetailRowWithColor(String label, String value, Color color) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 8.0),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          SizedBox(
-            width: 120,
-            child: Text(
-              "$label:",
-              style: const TextStyle(fontWeight: FontWeight.w500),
-            ),
-          ),
-          Expanded(
-            child: Text(
-              value,
-              style: TextStyle(
-                color: color,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Future<void> _confirmDeleteNotice(BuildContext context, Notice notice) async {
-    final confirmed = await showDialog<bool>(
+    final selectedStatus = await showDialog<String>(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Delete Notice'),
-        content: Text(
-            'Are you sure you want to delete notice ${notice.autoId}?\n\nThis action cannot be undone.'),
+        title: const Text('Change Notice Status'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text('Current Status: ${notice.status}'),
+            const SizedBox(height: 16),
+            const Text('Select New Status:', style: TextStyle(fontWeight: FontWeight.bold)),
+            const SizedBox(height: 8),
+            ...statuses.map((status) => RadioListTile<String>(
+              title: Text(status),
+              value: status,
+              groupValue: notice.status,
+              onChanged: (value) {
+                Navigator.pop(context, value);
+              },
+            )),
+          ],
+        ),
         actions: [
           TextButton(
-            onPressed: () => Navigator.pop(context, false),
+            onPressed: () => Navigator.pop(context),
             child: const Text('Cancel'),
-          ),
-          ElevatedButton(
-            onPressed: () => Navigator.pop(context, true),
-            style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
-            child: const Text('Delete'),
           ),
         ],
       ),
     );
 
-    if (confirmed == true) {
+    if (selectedStatus != null && selectedStatus != notice.status) {
       try {
-        await NoticeService.deleteNotice(notice.id);
+        debugPrint('🔵 DEBUG: Manual status change requested');
+        debugPrint('🔵 DEBUG: Notice ID: ${notice.id}');
+        debugPrint('🔵 DEBUG: Notice autoId: ${notice.autoId}');
+        debugPrint('🔵 DEBUG: Old status: ${notice.status}');
+        debugPrint('🔵 DEBUG: New status: $selectedStatus');
+
+        await FirebaseFirestore.instance
+            .collection('notices')
+            .doc(notice.id)
+            .update({'status': selectedStatus});
+
+        debugPrint('🔵 DEBUG: Firestore update completed');
+
+        // Verify it saved
+        final checkDoc = await FirebaseFirestore.instance
+            .collection('notices')
+            .doc(notice.id)
+            .get();
+
+        final savedStatus = checkDoc.data()?['status'];
+        debugPrint('🔵 DEBUG: Verified status in Firestore: $savedStatus');
+
+        // Wait a moment to see if stream overwrites it
+        await Future.delayed(const Duration(milliseconds: 500));
+
+        final checkDoc2 = await FirebaseFirestore.instance
+            .collection('notices')
+            .doc(notice.id)
+            .get();
+
+        final savedStatus2 = checkDoc2.data()?['status'];
+        debugPrint('🔵 DEBUG: Status after 500ms: $savedStatus2');
+
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Notice ${notice.autoId} deleted successfully')),
+          SnackBar(content: Text('Status changed to: $selectedStatus')),
         );
-        Navigator.pop(context); // Go back
       } catch (e) {
+        debugPrint('🔵 DEBUG: Error updating status: $e');
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error deleting notice: $e')),
+          SnackBar(content: Text('Error updating status: $e')),
         );
       }
     }
@@ -186,27 +160,7 @@ class NoticeDetailScreen extends StatelessWidget {
 
         return Scaffold(
           appBar: AppBar(
-            title: Row(
-              children: [
-                Expanded(child: Text(notice.autoId ?? "Notice Details")),
-                if (notice.priority != null) ...[
-                  Icon(
-                    _getPriorityIcon(notice.priority),
-                    color: _getPriorityColor(notice.priority),
-                    size: 20,
-                  ),
-                  const SizedBox(width: 4),
-                  Text(
-                    notice.priority!,
-                    style: TextStyle(
-                      color: _getPriorityColor(notice.priority),
-                      fontSize: 14,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                ],
-              ],
-            ),
+            title: Text(notice.autoId ?? "Notice Details"),
             actions: [
               IconButton(
                 icon: const Icon(Icons.edit),
@@ -222,6 +176,9 @@ class NoticeDetailScreen extends StatelessWidget {
               PopupMenuButton<String>(
                 onSelected: (value) async {
                   switch (value) {
+                    case 'change_status':
+                      await _showStatusChangeDialog(context, notice);
+                      break;
                     case 'delete':
                       _confirmDeleteNotice(context, notice);
                       break;
@@ -229,10 +186,19 @@ class NoticeDetailScreen extends StatelessWidget {
                 },
                 itemBuilder: (context) => [
                   const PopupMenuItem(
+                    value: 'change_status',
+                    child: ListTile(
+                      leading: Icon(Icons.swap_horiz, color: Colors.blue),
+                      title: Text('Change Status'),
+                      contentPadding: EdgeInsets.zero,
+                    ),
+                  ),
+                  const PopupMenuItem(
                     value: 'delete',
                     child: ListTile(
                       leading: Icon(Icons.delete, color: Colors.red),
                       title: Text('Delete Notice'),
+                      contentPadding: EdgeInsets.zero,
                     ),
                   ),
                 ],
@@ -250,19 +216,22 @@ class NoticeDetailScreen extends StatelessWidget {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text("Notice Information",
-                            style: Theme.of(context).textTheme.headlineSmall),
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Text("Notice Information",
+                                style: Theme.of(context).textTheme.headlineSmall),
+                            Chip(
+                              label: Text(notice.status),
+                              backgroundColor: _getStatusColor(notice.status),
+                              labelStyle: const TextStyle(color: Colors.white),
+                            ),
+                          ],
+                        ),
                         const SizedBox(height: 16),
                         _buildDetailRow("Notice ID", notice.autoId ?? "N/A"),
                         _buildDetailRow("Client ID", notice.clientId),
                         _buildDetailRow("Notice Number", notice.noticeNumber),
-                        _buildDetailRow("Status", notice.status),
-                        if (notice.priority != null)
-                          _buildDetailRowWithColor(
-                            "Priority",
-                            notice.priority!,
-                            _getPriorityColor(notice.priority),
-                          ),
                         if (notice.noticeIssue != null)
                           _buildDetailRow("Issue", notice.noticeIssue!),
                         if (notice.formNumber != null)
@@ -460,6 +429,13 @@ class NoticeDetailScreen extends StatelessWidget {
                 },
               ),
               SpeedDialChild(
+                child: const Icon(Icons.swap_horiz),
+                label: 'Change Status',
+                onTap: () {
+                  _showStatusChangeDialog(context, notice);
+                },
+              ),
+              SpeedDialChild(
                 child: const Icon(Icons.add_call),
                 label: 'Add Call',
                 onTap: () {
@@ -479,5 +455,78 @@ class NoticeDetailScreen extends StatelessWidget {
         );
       },
     );
+  }
+
+  Color _getStatusColor(String status) {
+    switch (status.toLowerCase()) {
+      case 'open':
+        return Colors.blue;
+      case 'in progress':
+        return Colors.orange;
+      case 'escalated':
+        return Colors.red;
+      case 'waiting on client':
+      case 'awaiting irs response':
+        return Colors.purple;
+      case 'closed':
+        return Colors.green;
+      default:
+        return Colors.grey;
+    }
+  }
+
+  Widget _buildDetailRow(String label, String value) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8.0),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          SizedBox(
+            width: 120,
+            child: Text(
+              "$label:",
+              style: const TextStyle(fontWeight: FontWeight.w500),
+            ),
+          ),
+          Expanded(child: Text(value)),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _confirmDeleteNotice(BuildContext context, Notice notice) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Delete Notice'),
+        content: Text(
+            'Are you sure you want to delete notice ${notice.autoId}?\n\nThis action cannot be undone.'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(context, true),
+            style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+            child: const Text('Delete'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed == true) {
+      try {
+        await NoticeService.deleteNotice(notice.id);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Notice ${notice.autoId} deleted successfully')),
+        );
+        Navigator.pop(context); // Go back
+      } catch (e) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error deleting notice: $e')),
+        );
+      }
+    }
   }
 }

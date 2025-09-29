@@ -19,6 +19,7 @@ import 'screens/notice_tracker_screen.dart';
 import 'screens/billing_summary_screen.dart';
 import 'screens/response_log_screen.dart';
 import 'screens/debug_escalation_screen.dart';
+import 'screens/print_dashboard_screen.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -120,6 +121,19 @@ class _HomeScreenState extends State<HomeScreen> {
       appBar: AppBar(
         title: const Text("IRS Notice Tracker"),
         actions: [
+          if (_selectedIndex == 0) // Only show on Dashboard tab
+            IconButton(
+              icon: const Icon(Icons.print),
+              tooltip: "Print Dashboard",
+              onPressed: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => const PrintDashboardScreen(),
+                  ),
+                );
+              },
+            ),
           // IconButton(
           //   icon: const Icon(Icons.bug_report),
           //   onPressed: () {

@@ -27,7 +27,7 @@ class NoticeLogic {
     return null;
   }
 
-  /// Calculate Days Remaining
+  // Calculate Days Remaining
   static int? calculateDaysRemaining(Notice notice, List<Call> calls) {
     final deadline = calculateResponseDeadline(notice, calls);
     if (deadline == null) return null;
@@ -43,9 +43,15 @@ class NoticeLogic {
     return daysRemaining;
   }
 
-  /// Enhanced Escalation Logic with Debug Logging
+  // Enhanced Escalation Logic with Debug Logging
   static bool isEscalated(Notice notice, List<Call> calls) {
     print('🔍 Checking escalation for Notice ${notice.autoId}:');
+
+    // CRITICAL: Don't escalate closed notices
+    if (notice.status.toLowerCase() == 'closed') {
+      print('   ✅ NOT ESCALATED: Notice is already Closed');
+      return false;
+    }
 
     // Check if priority is set to Final/Levy/Lien
     final priority = notice.priority?.toLowerCase() ?? "";
@@ -93,17 +99,23 @@ class NoticeLogic {
   static String calculateStatus(Notice notice, List<Call> calls) {
     print('🎯 Calculating status for Notice ${notice.autoId}:');
 
-    // First check if escalated - this takes priority
-    if (isEscalated(notice, calls)) {
-      print('   Final Status: ESCALATED');
-      return "Escalated";
+    // CRITICAL: Preserve Closed status - don't override it
+    if (notice.status.toLowerCase() == 'closed') {
+      print('   Final Status: CLOSED (preserved - no override)');
+      return "Closed";
     }
 
-    // Check if closed/resolved
+    // Check if resolved by calls
     final resolvedCalls = calls.where((c) => (c.outcome ?? "").toLowerCase() == "resolved").toList();
     if (resolvedCalls.isNotEmpty) {
       print('   Final Status: CLOSED (resolved calls found)');
       return "Closed";
+    }
+
+    // Check if escalated - this takes priority over other statuses
+    if (isEscalated(notice, calls)) {
+      print('   Final Status: ESCALATED');
+      return "Escalated";
     }
 
     // Check specific waiting states

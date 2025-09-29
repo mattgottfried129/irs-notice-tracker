@@ -10,6 +10,7 @@ import 'notice_detail_screen.dart';
 import 'notice_tracker_screen.dart';
 import 'poa_import_screen.dart';
 import 'add_call_screen.dart';
+import 'print_dashboard_screen.dart';
 
 class DashboardScreen extends StatelessWidget {
   const DashboardScreen({super.key});
@@ -426,7 +427,23 @@ class FilteredNoticeTrackerScreen extends StatelessWidget {
     }
 
     return Scaffold(
-      appBar: AppBar(title: Text(title)),
+      appBar: AppBar(
+          title: Text(title),
+          actions: [
+            IconButton(
+              icon: const Icon(Icons.print),
+              tooltip: "Print Dashboard",
+              onPressed: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => const PrintDashboardScreen(),
+                  ),
+                );
+              },
+            ),
+          ],
+      ),
       body: StreamBuilder<QuerySnapshot>(
         stream: FirebaseFirestore.instance.collection('notices').snapshots(),
         builder: (context, noticeSnapshot) {

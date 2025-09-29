@@ -7,12 +7,12 @@ class NoticeService {
   static final FirebaseFirestore _db = FirebaseFirestore.instance;
   static const String _collection = 'notices';
 
-  // ➕ Add notice
+  // Add notice
   static Future<void> addNotice(Notice notice) async {
     await _db.collection(_collection).doc(notice.id).set(notice.toMap());
   }
 
-  // 🔥 Get all notices (raw)
+  // Get all notices (raw)
   static Future<List<Notice>> getNotices() async {
     final snapshot = await _db.collection(_collection).get();
     return snapshot.docs
@@ -20,7 +20,7 @@ class NoticeService {
         .toList();
   }
 
-  // 📡 Stream notices with real-time status updates
+  // Stream notices with real-time status updates
   static Stream<List<Notice>> getNoticesStream() {
     return _db.collection(_collection).snapshots().asyncMap((snapshot) async {
       final notices = snapshot.docs
@@ -36,7 +36,7 @@ class NoticeService {
     });
   }
 
-  // 🔍 Get single notice (raw)
+  // Get single notice (raw)
   static Future<Notice?> getNoticeById(String noticeId) async {
     try {
       final doc = await _db.collection(_collection).doc(noticeId).get();
@@ -51,7 +51,7 @@ class NoticeService {
     return null;
   }
 
-  // ✏️ Update notice
+  // Update notice
   static Future<void> updateNotice(String noticeId, Notice notice) async {
     try {
       await _db.collection(_collection).doc(noticeId).update(notice.toMap());
@@ -63,7 +63,7 @@ class NoticeService {
     }
   }
 
-  // ❌ Delete notice
+  // Delete notice
   static Future<void> deleteNotice(String noticeId) async {
     try {
       await _db.collection(_collection).doc(noticeId).delete();
@@ -73,7 +73,7 @@ class NoticeService {
     }
   }
 
-  // 🔥 Get notices by client ID (raw)
+  // Get notices by client ID (raw)
   static Future<List<Notice>> getNoticesByClientId(String clientId) async {
     final snapshot = await _db
         .collection(_collection)
@@ -92,9 +92,21 @@ class NoticeService {
     return notices;
   }
 
-  // 🔹 Private method to update notice status and derived fields
+  // Private method to update notice status and derived fields
   static Future<void> _updateNoticeStatus(Notice notice) async {
     try {
+      // CRITICAL: Re-fetch the notice from Firestore to get the latest status
+      final doc = await _db.collection(_collection).doc(notice.id).get();
+      if (!doc.exists) return;
+
+      final currentStatus = (doc.data()?['status'] as String?)?.toLowerCase();
+
+      // Don't recalculate if currently Closed in Firestore
+      if (currentStatus == 'closed') {
+        print('Skipping status update for ${notice.autoId ?? notice.id} - already Closed in Firestore');
+        return;
+      }
+
       // Get all calls for this notice
       final callsSnapshot = await _db
           .collection('calls')
@@ -131,13 +143,13 @@ class NoticeService {
 
       await _db.collection(_collection).doc(notice.id).update(updateData);
 
-      print('✅ Updated notice ${notice.autoId ?? notice.id} status to: $derivedStatus (escalated: $escalated, days remaining: $daysRemaining)');
+      print('Updated notice ${notice.autoId ?? notice.id} status to: $derivedStatus (escalated: $escalated, days remaining: $daysRemaining)');
     } catch (e) {
-      print('❌ Error updating notice status for ${notice.id}: $e');
+      print('Error updating notice status for ${notice.id}: $e');
     }
   }
 
-  // 🔹 Get notices with enhanced filtering
+  // Get notices with enhanced filtering
   static Future<List<Notice>> getNoticesWithFilter(String filter) async {
     final notices = await getNotices();
 
@@ -169,9 +181,9 @@ class NoticeService {
     }
   }
 
-  // 🔹 Force status recalculation for all notices (maintenance function)
+  // Force status recalculation for all notices (maintenance function)
   static Future<void> recalculateAllNoticeStatuses() async {
-    print('🔄 Starting status recalculation for all notices...');
+    print('Starting status recalculation for all notices...');
     try {
       final snapshot = await _db.collection(_collection).get();
       final notices = snapshot.docs
@@ -183,23 +195,23 @@ class NoticeService {
         await _updateNoticeStatus(notice);
         updated++;
         if (updated % 10 == 0) {
-          print('📊 Updated $updated/${notices.length} notices...');
+          print('Updated $updated/${notices.length} notices...');
         }
       }
 
-      print('✅ Completed status recalculation for $updated notices');
+      print('Completed status recalculation for $updated notices');
     } catch (e) {
-      print('❌ Error during status recalculation: $e');
+      print('Error during status recalculation: $e');
       rethrow;
     }
   }
 
-  // 🔹 Get escalated notices specifically
+  // Get escalated notices specifically
   static Future<List<Notice>> getEscalatedNotices() async {
     return await getNoticesWithFilter('escalated');
   }
 
-  // 🔹 Get overdue notices specifically
+  // Get overdue notices specifically
   static Future<List<Notice>> getOverdueNotices() async {
     return await getNoticesWithFilter('overdue');
   }

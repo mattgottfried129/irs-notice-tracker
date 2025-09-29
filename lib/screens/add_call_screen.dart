@@ -319,30 +319,59 @@ class _AddCallScreenState extends State<AddCallScreen> {
       }
 
       // Now update the notice status based on the outcome
+      // Now update the notice status based on the outcome
       String newStatus = "Open";
       final outcome = _outcomeController.text.trim();
 
+// Debug: Print outcome value
+      debugPrint("🔍 Outcome value: '$outcome'");
+      debugPrint("🔍 Outcome length: ${outcome.length}");
+      debugPrint("🔍 Outcome == 'Resolved': ${outcome == "Resolved"}");
+
       if (outcome == "Resolved") {
         newStatus = "Closed";
+        debugPrint("🔍 Setting status to Closed");
       } else if (outcome == "Waiting on Client") {
         newStatus = "Waiting on Client";
+        debugPrint("🔍 Setting status to Waiting on Client");
       } else if (outcome == "Waiting on IRS") {
         newStatus = "Awaiting IRS Response";
+        debugPrint("🔍 Setting status to Awaiting IRS Response");
       } else if (outcome == "Monitor Account" ||
           outcome == "Submit Documentation" ||
           outcome == "Follow-Up Call" ||
           outcome == "Other (Details in Notes)") {
         newStatus = "In Progress";
+        debugPrint("🔍 Setting status to In Progress");
       }
 
-      // Get the correct notice document ID
+      debugPrint("🔍 Final newStatus: '$newStatus'");
+
+// Get the correct notice document ID
       final noticeDocId = _selectedNoticeId ?? widget.noticeId;
+
+      debugPrint("🔍 Notice Doc ID: '$noticeDocId'");
+      debugPrint("🔍 Selected Notice ID: '$_selectedNoticeId'");
+      debugPrint("🔍 Widget Notice ID: '${widget.noticeId}'");
 
       if (noticeDocId.isEmpty) {
         throw Exception("Notice ID is missing – cannot update status");
       }
 
       try {
+        // First verify the document exists
+        final docSnapshot = await FirebaseFirestore.instance
+            .collection('notices')
+            .doc(noticeDocId)
+            .get();
+
+        if (!docSnapshot.exists) {
+          debugPrint("❌ Notice document does not exist: $noticeDocId");
+          throw Exception("Notice document not found");
+        }
+
+        debugPrint("✅ Notice document found, updating status...");
+
         // Update the notice status in Firestore
         await FirebaseFirestore.instance
             .collection('notices')
@@ -352,15 +381,19 @@ class _AddCallScreenState extends State<AddCallScreen> {
         debugPrint("✅ Updated notice $noticeDocId to status $newStatus");
 
         // Show success message for status update
-        if (outcome == "Resolved") {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Notice $noticeDocId marked as Closed')),
-          );
-        }
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Notice status updated to: $newStatus'),
+            backgroundColor: outcome == "Resolved" ? Colors.green : Colors.blue,
+          ),
+        );
       } catch (e) {
         debugPrint("❌ Failed to update notice $noticeDocId: $e");
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Warning: Could not update notice status: $e')),
+          SnackBar(
+            content: Text('Warning: Could not update notice status: $e'),
+            backgroundColor: Colors.orange,
+          ),
         );
         // Don't rethrow - the call was saved successfully
       }
@@ -604,8 +637,8 @@ class _AddCallScreenState extends State<AddCallScreen> {
                 // Call Date Field
                 ListTile(
                   title: Text(_callDate == null
-                      ? "Call Date: Today"
-                      : "Call Date: ${_callDate!.toLocal().toString().split(' ')[0]}"),
+                      ? "Response Date: Today"
+                      : "Response Date: ${_callDate!.toLocal().toString().split(' ')[0]}"),
                   trailing: const Icon(Icons.calendar_today),
                   onTap: () async {
                     final picked = await showDatePicker(
@@ -847,15 +880,6 @@ class _AddCallScreenState extends State<AddCallScreen> {
 
                 const SizedBox(height: 16),
 
-                TextFormField(
-                  controller: _descriptionController,
-                  decoration: const InputDecoration(
-                    labelText: "Brief Description (for billing)",
-                    border: OutlineInputBorder(),
-                  ),
-                  maxLines: 2,
-                ),
-                const SizedBox(height: 16),
 
                 TextFormField(
                   controller: _issuesController,
@@ -989,7 +1013,7 @@ class _AddCallScreenState extends State<AddCallScreen> {
                               children: [
                                 const Text("Estimated Amount:"),
                                 Text(
-                                  "\${_calculateAmount().toStringAsFixed(2)}",
+                                  "\$" + _calculateAmount().toStringAsFixed(2),
                                   style: const TextStyle(
                                     fontWeight: FontWeight.bold,
                                     color: Colors.green,
@@ -1015,8 +1039,8 @@ class _AddCallScreenState extends State<AddCallScreen> {
                         child: _isLoading
                             ? const CircularProgressIndicator()
                             : Text(widget.call == null
-                            ? "Save Call"
-                            : "Update Call"),
+                            ? "Save Response"
+                            : "Update Response"),
                       ),
                     ),
                     const SizedBox(width: 16),
