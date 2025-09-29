@@ -21,19 +21,25 @@ jobs:
       - name: Install dependencies
         run: flutter pub get
 
-      # This step explicitly sets the iOS version in the Podfile, then installs the pods.
       - name: Set iOS version and install pods
         run: |
           cd ios
-          sed -i '' "s/platform :ios, '.*'/platform :ios, '12.0'/" Podfile
+          # This command ensures the Podfile exists and sets the platform version
+          sed -i '' "s/# platform :ios, '11.0'/platform :ios, '12.0'/" Podfile
           pod install
           cd ..
 
-      - name: Decode and import signing certificate
-        uses: apple-actions/import-codesigning-certs@v2
-        with:
-          p12-file-base64: ${{ secrets.BUILD_CERTIFICATE_BASE64 }}
-          p12-password: ${{ secrets.P12_PASSWORD }}
+      - name: Import Code-Signing Certificates
+        run: |
+          # Create a temporary keychain
+          security create-keychain -p "${{ secrets.KEYCHAIN_PASSWORD }}" build.keychain
+          security default-keychain -s build.keychain
+          security unlock-keychain -p "${{ secrets.KEYCHAIN_PASSWORD }}" build.keychain
+          
+          # Decode and import the certificate (.p12)
+          echo "${{ secrets.BUILD_CERTIFICATE_BASE64 }}" | base64 --decode > certificate.p12
+          security import certificate.p12 -k build.keychain -P "${{ secrets.P12_PASSWORD }}" -A
+          security set-key-partition-list -S apple-tool:,apple: -s -k "${{ secrets.KEYCHAIN_PASSWORD }}" build.keychain
 
       - name: Install provisioning profile
         run: |
