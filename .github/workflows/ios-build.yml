@@ -11,7 +11,7 @@ jobs:
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       - name: Set up Flutter
         uses: subosito/flutter-action@v2
@@ -21,16 +21,19 @@ jobs:
       - name: Install dependencies
         run: flutter pub get
 
-      # ---- NEW STEP ADDED HERE ----
-      - name: Generate Podfile
-        run: flutter build ios --no-codesign
+      # This step explicitly sets the iOS version in the Podfile, then installs the pods.
+      - name: Set iOS version and install pods
+        run: |
+          cd ios
+          sed -i '' "s/platform :ios, '.*'/platform :ios, '12.0'/" Podfile
+          pod install
+          cd ..
 
       - name: Decode and import signing certificate
-        uses: apple-actions/import-codesigning-certs@v1
+        uses: apple-actions/import-codesigning-certs@v2
         with:
           p12-file-base64: ${{ secrets.BUILD_CERTIFICATE_BASE64 }}
           p12-password: ${{ secrets.P12_PASSWORD }}
-          keychain-password: ${{ secrets.KEYCHAIN_PASSWORD }}
 
       - name: Install provisioning profile
         run: |
@@ -41,7 +44,7 @@ jobs:
         run: flutter build ipa --release
 
       - name: Upload artifact
-        uses: actions/upload-artifact@v2
+        uses: actions/upload-artifact@v4
         with:
           name: ios-release
           path: build/ios/ipa/*.ipa
