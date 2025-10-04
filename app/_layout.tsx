@@ -1,24 +1,98 @@
-import { DarkTheme, DefaultTheme, ThemeProvider } from '@react-navigation/native';
-import { Stack } from 'expo-router';
+// app/_layout.tsx
+// Root layout with authentication handling
+
+import { Stack, useRouter, useSegments } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
-import 'react-native-reanimated';
+import { useEffect } from 'react';
+import { AuthProvider, useAuth } from '../contexts/AuthContext';
 
-import { useColorScheme } from '@/hooks/use-color-scheme';
+function RootLayoutNav() {
+  const { user, loading } = useAuth();
+  const segments = useSegments();
+  const router = useRouter();
 
-export const unstable_settings = {
-  anchor: '(tabs)',
-};
+  useEffect(() => {
+    if (loading) return;
 
-export default function RootLayout() {
-  const colorScheme = useColorScheme();
+    const inAuthGroup = segments[0] === '(auth)';
+
+    if (!user && !inAuthGroup) {
+      // Redirect to login if not authenticated
+      router.replace('/(auth)/login');
+    } else if (user && inAuthGroup) {
+      // Redirect to dashboard if authenticated and trying to access auth screens
+      router.replace('/(tabs)/dashboard');
+    }
+  }, [user, loading, segments]);
+
+  if (loading) {
+    // You can show a splash screen here
+    return null;
+  }
 
   return (
-    <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
-      <Stack>
+    <>
+      <StatusBar style="light" />
+      <Stack screenOptions={{ headerShown: false }}>
+        <Stack.Screen name="(auth)" options={{ headerShown: false }} />
         <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-        <Stack.Screen name="modal" options={{ presentation: 'modal', title: 'Modal' }} />
+        <Stack.Screen 
+          name="client/[id]" 
+          options={{ 
+            presentation: 'modal',
+            headerShown: true,
+            title: 'Client Details'
+          }} 
+        />
+        <Stack.Screen 
+          name="client/add" 
+          options={{ 
+            presentation: 'modal',
+            headerShown: true,
+            title: 'Add Client'
+          }} 
+        />
+        <Stack.Screen 
+          name="notice/[id]" 
+          options={{ 
+            presentation: 'modal',
+            headerShown: true,
+            title: 'Notice Details'
+          }} 
+        />
+        <Stack.Screen 
+          name="notice/add" 
+          options={{ 
+            presentation: 'modal',
+            headerShown: true,
+            title: 'Add Notice'
+          }} 
+        />
+        <Stack.Screen 
+          name="response/[id]" 
+          options={{ 
+            presentation: 'modal',
+            headerShown: true,
+            title: 'Response Details'
+          }} 
+        />
+        <Stack.Screen 
+          name="response/add" 
+          options={{ 
+            presentation: 'modal',
+            headerShown: true,
+            title: 'Log Response'
+          }} 
+        />
       </Stack>
-      <StatusBar style="auto" />
-    </ThemeProvider>
+    </>
+  );
+}
+
+export default function RootLayout() {
+  return (
+    <AuthProvider>
+      <RootLayoutNav />
+    </AuthProvider>
   );
 }
